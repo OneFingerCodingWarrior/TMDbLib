@@ -1,9 +1,7 @@
 ﻿using System;
-using Newtonsoft.Json;
 using TMDbLib.Objects.Account;
 using TMDbLib.Objects.Authentication;
 using TMDbLib.Objects.General;
-using TMDbLib.Utilities.Converters;
 using ParameterType = TMDbLib.Rest.ParameterType;
 using RestClient = TMDbLib.Rest.RestClient;
 using RestRequest = TMDbLib.Rest.RestRequest;
@@ -12,6 +10,7 @@ using System.Net.Http;
 using System.Threading;
 using System.Threading.Tasks;
 using TMDbLib.Rest;
+using TMDbLib.Utilities.Serializer;
 
 namespace TMDbLib.Client
 {
@@ -20,23 +19,17 @@ namespace TMDbLib.Client
         private const string ApiVersion = "3";
         private const string ProductionUrl = "api.themoviedb.org";
 
-        private readonly JsonSerializer _serializer;
+        private readonly ITMDbSerializer _serializer;
         private RestClient _client;
         private TMDbConfig _config;
 
-        public TMDbClient(string apiKey, bool useSsl = true, string baseUrl = ProductionUrl, JsonSerializer serializer = null, IWebProxy proxy = null)
+        public TMDbClient(string apiKey, bool useSsl = true, string baseUrl = ProductionUrl, ITMDbSerializer serializer = null, IWebProxy proxy = null)
         {
             DefaultLanguage = null;
             DefaultImageLanguage = null;
             DefaultCountry = null;
 
-            _serializer = serializer ?? JsonSerializer.CreateDefault();
-            _serializer.Converters.Add(new ChangeItemConverter());
-            _serializer.Converters.Add(new AccountStateConverter());
-            _serializer.Converters.Add(new KnownForConverter());
-            _serializer.Converters.Add(new SearchBaseConverter());
-            _serializer.Converters.Add(new TaggedImageConverter());
-            _serializer.Converters.Add(new TolerantEnumConverter());
+            _serializer = serializer ?? TMDbJsonSerializer.Instance;
 
             //Setup proxy to use during requests
             //Proxy is optional. If passed, will be used in every request.
@@ -176,7 +169,13 @@ namespace TMDbLib.Client
             return new Uri(baseUrl + size + filePath);
         }
 
-        public async Task<byte[]> GetImageBytes(string size, string filePath, bool useSsl = false, CancellationToken token = default)
+        [Obsolete("Use " + nameof(GetImageBytesAsync))]
+        public Task<byte[]> GetImageBytes(string size, string filePath, bool useSsl = false, CancellationToken token = default)
+        {
+            return GetImageBytesAsync(size, filePath, useSsl, token);
+        }
+
+        public async Task<byte[]> GetImageBytesAsync(string size, string filePath, bool useSsl = false, CancellationToken token = default)
         {
             Uri url = GetImageUrl(size, filePath, useSsl);
 
